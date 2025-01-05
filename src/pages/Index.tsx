@@ -23,6 +23,29 @@ const Index = () => {
     }
   };
 
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      if (file.type.startsWith("image/")) {
+        setSelectedFile(file);
+      } else {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image file (JPEG, PNG)",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -34,9 +57,16 @@ const Index = () => {
         {!selectedFile ? (
           <Card className="p-8 text-center">
             <div className="space-y-4">
-              <div className="flex items-center justify-center">
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <div className="w-64 h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+              <div 
+                className="flex items-center justify-center"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+              >
+                <label 
+                  htmlFor="file-upload" 
+                  className="cursor-pointer w-full"
+                >
+                  <div className="w-full max-w-md mx-auto h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors">
                     <div className="space-y-2">
                       <div className="text-gray-600">Drop your image here or</div>
                       <Button>Browse Files</Button>
