@@ -22,6 +22,7 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
 
   useEffect(() => {
     const loadImage = async () => {
+      console.log(canvasRef.current)
       try {
         const img = new Image();
         img.src = URL.createObjectURL(file);
@@ -47,7 +48,7 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
     };
 
     loadImage();
-  }, [file, toast]);
+  }, [file]);
 
   const processImage = async () => {
     if (!canvasRef.current) return;
@@ -60,10 +61,10 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
 
       const canvas = canvasRef.current;
       const imageData = canvas.toDataURL("image/jpeg", 0.8);
-      
+
       console.log("Processing with segmentation model...");
       const result = await segmenter(imageData);
-      
+
       if (!result || !Array.isArray(result) || result.length === 0 || !result[0].mask) {
         throw new Error("Invalid segmentation result");
       }
@@ -73,23 +74,23 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
       outputCanvas.width = canvas.width;
       outputCanvas.height = canvas.height;
       const outputCtx = outputCanvas.getContext("2d");
-      
+
       if (!outputCtx) throw new Error("Could not get output canvas context");
-      
+
       // Draw original image
       outputCtx.drawImage(canvas, 0, 0);
-      
+
       // Apply the mask
       const outputImageData = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
       const data = outputImageData.data;
-      
+
       for (let i = 0; i < result[0].mask.data.length; i++) {
         const alpha = Math.round((1 - result[0].mask.data[i]) * 255);
         data[i * 4 + 3] = alpha;
       }
-      
+
       outputCtx.putImageData(outputImageData, 0, 0);
-      
+
       // Convert to base64 and set as processed image
       const processedImageData = outputCanvas.toDataURL("image/png");
       setProcessedImage(processedImageData);
@@ -121,6 +122,35 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
     }
   };
 
+  // const canvas = document.getElementById("canvas");
+
+  // let startX, startY, isDrawing = false;
+
+  // canvas.addEventListener("mousedown", (event) => {
+  //   startX = event.offsetX;
+  //   startY = event.offsetY;
+  //   isDrawing = true;
+  // });
+
+  // canvas.addEventListener("mousemove", (event) => {
+  //   if (isDrawing) {
+  //     const endX = event.offsetX;
+  //     const endY = event.offsetY;
+  //     drawMask(startX, startY, endX, endY); // Draw the selection mask
+  //   }
+  // });
+
+  // canvas.addEventListener("mouseup", () => {
+  //   isDrawing = false;
+  // });
+
+  // const drawMask = (x1, y1, x2, y2) => {
+  //   const ctx = canvas.getContext("2d");
+  //   ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous mask
+  //   ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // Semi-transparent black to indicate the area
+  //   ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+  // }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -131,6 +161,7 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
           <div className="relative">
             <canvas
               ref={canvasRef}
+              id="canvas"
               className="max-w-full h-auto border rounded-lg"
             />
           </div>
