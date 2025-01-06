@@ -17,12 +17,17 @@ interface ImageEditorProps {
 const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
+  const [isPainting, setIsPainting] = useState(false);
+  const [brushSize, setBrushSize] = useState(20);
+  const [maskDataUrl, setMaskDataUrl] = useState<string | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const maskCanvasRef = useRef<HTMLCanvasElement>(null);
+
   const { toast } = useToast();
 
   useEffect(() => {
     const loadImage = async () => {
-      console.log(canvasRef.current)
       try {
         const img = new Image();
         img.src = URL.createObjectURL(file);
@@ -34,6 +39,16 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
             const ctx = canvas.getContext("2d");
             if (ctx) {
               ctx.drawImage(img, 0, 0);
+            }
+          }
+
+          if (maskCanvasRef.current) {
+            const maskCanvas = maskCanvasRef.current;
+            maskCanvas.width = img.width;
+            maskCanvas.height = img.height;
+            const maskCtx = maskCanvas.getContext("2d");
+            if (maskCtx) {
+              maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height); // Clear mask on load
             }
           }
         };
@@ -50,50 +65,70 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
     loadImage();
   }, [file]);
 
+
+  const startPainting = (e: React.MouseEvent | React.TouchEvent) => {
+    setIsPainting(true);
+    draw(e);
+  };
+
+  const stopPainting = () => {
+    setIsPainting(false);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isPainting || !maskCanvasRef.current) return;
+
+    const canvas = maskCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let x, y;
+
+    if ("touches" in e) {
+      // Touch event
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      // Mouse event
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
+
+    ctx.fillStyle = "rgba(0, 0, 0, 1)";
+    ctx.beginPath();
+    ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const clearMask = () => {
+    if (maskCanvasRef.current) {
+      const ctx = maskCanvasRef.current.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
+      }
+    }
+  };
+
   const processImage = async () => {
-    if (!canvasRef.current) return;
-
+    if (!canvasRef.current || !maskCanvasRef.current) return;
     setIsProcessing(true);
+
     try {
-      const segmenter = await pipeline("image-segmentation", "Xenova/segformer-b0-finetuned-ade-512-512", {
-        device: "webgpu",
-      });
+      // Capture the current mask image (with black and white areas)
+      const maskCanvas = maskCanvasRef.current;
+      const ctx = maskCanvas.getContext("2d");
+      if (ctx) {
+        const maskImageData = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+        const maskData = maskImageData.data;
 
-      const canvas = canvasRef.current;
-      const imageData = canvas.toDataURL("image/jpeg", 0.8);
-
-      console.log("Processing with segmentation model...");
-      const result = await segmenter(imageData);
-
-      if (!result || !Array.isArray(result) || result.length === 0 || !result[0].mask) {
-        throw new Error("Invalid segmentation result");
+        // Convert the mask canvas to a DataURL (Image URL for mask)
+        const maskDataUrl = maskCanvas.toDataURL("image/png");
+        setProcessedImage(maskDataUrl); // Store mask image as DataURL
       }
-
-      // Create output canvas
-      const outputCanvas = document.createElement("canvas");
-      outputCanvas.width = canvas.width;
-      outputCanvas.height = canvas.height;
-      const outputCtx = outputCanvas.getContext("2d");
-
-      if (!outputCtx) throw new Error("Could not get output canvas context");
-
-      // Draw original image
-      outputCtx.drawImage(canvas, 0, 0);
-
-      // Apply the mask
-      const outputImageData = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
-      const data = outputImageData.data;
-
-      for (let i = 0; i < result[0].mask.data.length; i++) {
-        const alpha = Math.round((1 - result[0].mask.data[i]) * 255);
-        data[i * 4 + 3] = alpha;
-      }
-
-      outputCtx.putImageData(outputImageData, 0, 0);
-
-      // Convert to base64 and set as processed image
-      const processedImageData = outputCanvas.toDataURL("image/png");
-      setProcessedImage(processedImageData);
 
       toast({
         title: "Success",
@@ -111,6 +146,7 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
     }
   };
 
+
   const handleDownload = () => {
     if (processedImage) {
       const link = document.createElement("a");
@@ -121,35 +157,6 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
       document.body.removeChild(link);
     }
   };
-
-  // const canvas = document.getElementById("canvas");
-
-  // let startX, startY, isDrawing = false;
-
-  // canvas.addEventListener("mousedown", (event) => {
-  //   startX = event.offsetX;
-  //   startY = event.offsetY;
-  //   isDrawing = true;
-  // });
-
-  // canvas.addEventListener("mousemove", (event) => {
-  //   if (isDrawing) {
-  //     const endX = event.offsetX;
-  //     const endY = event.offsetY;
-  //     drawMask(startX, startY, endX, endY); // Draw the selection mask
-  //   }
-  // });
-
-  // canvas.addEventListener("mouseup", () => {
-  //   isDrawing = false;
-  // });
-
-  // const drawMask = (x1, y1, x2, y2) => {
-  //   const ctx = canvas.getContext("2d");
-  //   ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous mask
-  //   ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // Semi-transparent black to indicate the area
-  //   ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-  // }
 
   return (
     <div className="space-y-4">
@@ -163,6 +170,19 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
               ref={canvasRef}
               id="canvas"
               className="max-w-full h-auto border rounded-lg"
+            />
+            <canvas
+              ref={maskCanvasRef}
+              id="maskCanvas"
+              className="absolute top-0 left-0 max-w-full h-auto border rounded-lg pointer-events-none"
+              style={{ pointerEvents: "auto" }}
+              onMouseDown={startPainting}
+              onMouseMove={draw}
+              onMouseUp={stopPainting}
+              onMouseLeave={stopPainting}
+              onTouchStart={startPainting}
+              onTouchMove={draw}
+              onTouchEnd={stopPainting}
             />
           </div>
         </Card>
@@ -208,6 +228,10 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
             Download
           </Button>
         )}
+        <Button onClick={clearMask} variant="outline" className="w-40">
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Clear Mask
+        </Button>
         <Button onClick={onReset} variant="outline" className="w-40">
           <RotateCcw className="mr-2 h-4 w-4" />
           Reset

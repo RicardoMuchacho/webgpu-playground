@@ -11,7 +11,7 @@ const Index = () => {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">AI Image Editor</h1>
           <p className="text-gray-600">Upload an image, select areas to remove, and let AI do the magic</p>
-          <p className="text-gray-600">(This application uses WebGPU API and hugging face models)</p>
+          <p className="text-gray-600">(This application uses WebGPU and hugging face models for educational purposes)</p>
         </div>
 
         {!selectedFile ? (
