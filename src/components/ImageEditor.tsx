@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { pipeline, env } from "@huggingface/transformers";
+import { pipeline, env } from "@xenova/transformers";
 import { Loader2, Download, RotateCcw } from "lucide-react";
 
 // Configure transformers.js
@@ -118,34 +118,32 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
     setIsProcessing(true);
 
     try {
-      // Capture the current mask image (with black and white areas)
+      // Convert canvases to image data
+      const imageCanvas = canvasRef.current;
       const maskCanvas = maskCanvasRef.current;
-      const ctx = maskCanvas.getContext("2d");
-      if (ctx) {
-        const maskImageData = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
-        const maskData = maskImageData.data;
 
-        // Convert the mask canvas to a DataURL (Image URL for mask)
-        const maskDataUrl = maskCanvas.toDataURL("image/png");
-        setProcessedImage(maskDataUrl); // Store mask image as DataURL
-      }
+      // Set the processed image
+      // setProcessedImage(outputCanvas.toDataURL('image/png'));
 
       toast({
         title: "Success",
         description: "Image processed successfully!",
+        duration: 3000,
       });
+
     } catch (error) {
       console.error("Error processing image:", error);
+      let errorMessage = "Failed to process image";
       toast({
         title: "Error",
-        description: "Failed to process image",
+        description: errorMessage,
         variant: "destructive",
+        duration: 5000,
       });
     } finally {
       setIsProcessing(false);
     }
   };
-
 
   const handleDownload = () => {
     if (processedImage) {
