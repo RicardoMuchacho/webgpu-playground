@@ -49,33 +49,32 @@ const ImageSelector = ({ selectedImage }: Props) => {
   };
 
   return (
-    <Card className="aspect-video flex items-center justify-center p-8 text-center">
-      <div className="space-y-4">
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
+    <Card className="flex items-center justify-center h-64 text-center">
+      <div
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        className="w-full h-full flex items-center justify-center"
+      >
+        <label
+          htmlFor="file-upload"
+          className="cursor-pointer w-full h-64"
         >
-          <label
-            htmlFor="file-upload"
-            className="cursor-pointer w-full"
-          >
-            <div className="space-y-2">
-              <div className="text-gray-600">Drop your image here or</div>
-              <input
-                id="file-upload"
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-              <Button
-                onClick={() => document.getElementById('file-upload').click()}
-              >
-                Browse Files
-              </Button>
-            </div>
-          </label>
-        </div>
+          <div className="w-full h-full space-y-2 flex flex-col items-center justify-center">
+            <div className="text-gray-600">Drop your image here or</div>
+            <input
+              id="file-upload"
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+            <Button
+              onClick={() => document.getElementById('file-upload').click()}
+            >
+              Browse Files
+            </Button>
+          </div>
+        </label>
       </div>
     </Card>
   )

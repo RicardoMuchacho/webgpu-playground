@@ -132,10 +132,10 @@ const ImageEditor = () => {
           {!selectedImage ? (
             <ImageSelector selectedImage={setSelectedImage} />
           ) : (
-            <div className="relative">
+            <div className="relative w-full h-64 border rounded-lg overflow-hidden">
               <img
                 src={URL.createObjectURL(selectedImage)}
-                className="max-w-full h-auto border rounded-lg"
+                className="object-contain w-full h-full"
               />
             </div>
           )}
@@ -145,12 +145,12 @@ const ImageEditor = () => {
           <div className="text-center mb-4">
             <h3 className="text-lg font-semibold">Processed Image</h3>
           </div>
-          <div className="relative">
+          <div className="relative w-full h-64 border rounded-lg overflow-hidden">
             {processedImage ? (
               <img
                 src={processedImage}
                 alt="Processed"
-                className="max-w-full h-auto border rounded-lg"
+                className="object-contain w-full h-full"
               />
             ) : (
               <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
