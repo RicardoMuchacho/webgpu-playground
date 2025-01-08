@@ -4,17 +4,17 @@ import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props {
-  setSelectedFile: (file: File) => void;
+  selectedImage: (file: File) => void;
 }
 
-const ImageSelector = ({ setSelectedFile }: Props) => {
+const ImageSelector = ({ selectedImage }: Props) => {
   const { toast } = useToast();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type.startsWith("image/")) {
-        setSelectedFile(file);
+        selectedImage(file);
       } else {
         toast({
           title: "Invalid file type",
@@ -32,7 +32,7 @@ const ImageSelector = ({ setSelectedFile }: Props) => {
     const file = event.dataTransfer.files[0];
     if (file) {
       if (file.type.startsWith("image/")) {
-        setSelectedFile(file);
+        selectedImage(file);
       } else {
         toast({
           title: "Invalid file type",
@@ -49,10 +49,9 @@ const ImageSelector = ({ setSelectedFile }: Props) => {
   };
 
   return (
-    <Card className="p-8 text-center">
+    <Card className="aspect-video flex items-center justify-center p-8 text-center">
       <div className="space-y-4">
         <div
-          className="flex items-center justify-center"
           onDrop={handleDrop}
           onDragOver={handleDragOver}
         >
@@ -60,22 +59,20 @@ const ImageSelector = ({ setSelectedFile }: Props) => {
             htmlFor="file-upload"
             className="cursor-pointer w-full"
           >
-            <div className="w-full max-w-md mx-auto h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors">
-              <div className="space-y-2">
-                <div className="text-gray-600">Drop your image here or</div>
-                <input
-                  id="file-upload"
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-                <Button
-                  onClick={() => document.getElementById('file-upload').click()}
-                >
-                  Browse Files
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <div className="text-gray-600">Drop your image here or</div>
+              <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+              />
+              <Button
+                onClick={() => document.getElementById('file-upload').click()}
+              >
+                Browse Files
+              </Button>
             </div>
           </label>
         </div>

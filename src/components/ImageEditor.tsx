@@ -2,128 +2,94 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { pipeline, env } from "@xenova/transformers";
 import { Loader2, Download, RotateCcw } from "lucide-react";
+import {
+  env,
+  AutoModel,
+  AutoProcessor,
+  RawImage,
+} from "@huggingface/transformers";
+import ImageSelector from "./ImageSelector";
 
 // Configure transformers.js
 env.allowLocalModels = false;
 env.useBrowserCache = false;
 
-interface ImageEditorProps {
-  file: File;
-  onReset: () => void;
-}
-
-const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
+const ImageEditor = () => {
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
-  const [isPainting, setIsPainting] = useState(false);
-  const [brushSize, setBrushSize] = useState(20);
-  const [maskDataUrl, setMaskDataUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const maskCanvasRef = useRef<HTMLCanvasElement>(null);
+  const modelRef = useRef(null);
+  const processorRef = useRef(null);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadImage = async () => {
+    (async () => {
       try {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => {
-          if (canvasRef.current) {
-            const canvas = canvasRef.current;
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-            }
-          }
-
-          if (maskCanvasRef.current) {
-            const maskCanvas = maskCanvasRef.current;
-            maskCanvas.width = img.width;
-            maskCanvas.height = img.height;
-            const maskCtx = maskCanvas.getContext("2d");
-            if (maskCtx) {
-              maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height); // Clear mask on load
-            }
-          }
-        };
-      } catch (error) {
-        console.error("Error loading image:", error);
+        if (!navigator.gpu) {
+          throw new Error("WebGPU is not supported in this browser.");
+        }
+        const model_id = "Xenova/modnet";
+        env.backends.onnx.wasm.proxy = false;
+        modelRef.current ??= await AutoModel.from_pretrained(model_id, {
+          device: "webgpu",
+        });
+        processorRef.current ??= await AutoProcessor.from_pretrained(model_id); env.backends.onnx.wasm.proxy = false;
+      } catch (err) {
         toast({
           title: "Error",
           description: "Failed to load image",
           variant: "destructive",
         });
       }
-    };
+      setIsLoading(false);
+    })();
+  }, []);
 
-    loadImage();
-  }, [file]);
-
-
-  const startPainting = (e: React.MouseEvent | React.TouchEvent) => {
-    setIsPainting(true);
-    draw(e);
-  };
-
-  const stopPainting = () => {
-    setIsPainting(false);
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isPainting || !maskCanvasRef.current) return;
-
-    const canvas = maskCanvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    let x, y;
-
-    if ("touches" in e) {
-      // Touch event
-      x = (e.touches[0].clientX - rect.left) * scaleX;
-      y = (e.touches[0].clientY - rect.top) * scaleY;
-    } else {
-      // Mouse event
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-
-    ctx.fillStyle = "rgba(0, 0, 0, 1)";
-    ctx.beginPath();
-    ctx.arc(x, y, brushSize, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  const clearMask = () => {
-    if (maskCanvasRef.current) {
-      const ctx = maskCanvasRef.current.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
-      }
-    }
-  };
+  const onReset = () => {
+    setSelectedImage(null);
+    setProcessedImage(null);
+  }
 
   const processImage = async () => {
-    if (!canvasRef.current || !maskCanvasRef.current) return;
     setIsProcessing(true);
+    const model = modelRef.current;
+    const processor = processorRef.current;
 
     try {
-      // Convert canvases to image data
-      const imageCanvas = canvasRef.current;
-      const maskCanvas = maskCanvasRef.current;
+      const img = await RawImage.fromURL(URL.createObjectURL(selectedImage));
+      // Pre-process image
+      const { pixel_values } = await processor(img);
 
-      // Set the processed image
-      // setProcessedImage(outputCanvas.toDataURL('image/png'));
+      // Predict alpha matte
+      const { output } = await model({ input: pixel_values });
+
+      const maskData = (
+        await RawImage.fromTensor(output[0].mul(255).to("uint8")).resize(
+          img.width,
+          img.height,
+        )
+      ).data;
+
+      // Create new canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+
+      // Draw original image output to canvas
+      ctx.drawImage(img.toCanvas(), 0, 0);
+
+      // Update alpha channel
+      const pixelData = ctx.getImageData(0, 0, img.width, img.height);
+      for (let i = 0; i < maskData.length; ++i) {
+        pixelData.data[4 * i + 3] = maskData[i];
+      }
+      ctx.putImageData(pixelData, 0, 0);
+      setProcessedImage(canvas.toDataURL("image/png"));
 
       toast({
         title: "Success",
@@ -163,26 +129,16 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
           <div className="text-center mb-4">
             <h3 className="text-lg font-semibold">Original Image</h3>
           </div>
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              id="canvas"
-              className="max-w-full h-auto border rounded-lg"
-            />
-            <canvas
-              ref={maskCanvasRef}
-              id="maskCanvas"
-              className="absolute top-0 left-0 max-w-full h-auto border rounded-lg pointer-events-none"
-              style={{ pointerEvents: "auto" }}
-              onMouseDown={startPainting}
-              onMouseMove={draw}
-              onMouseUp={stopPainting}
-              onMouseLeave={stopPainting}
-              onTouchStart={startPainting}
-              onTouchMove={draw}
-              onTouchEnd={stopPainting}
-            />
-          </div>
+          {!selectedImage ? (
+            <ImageSelector selectedImage={setSelectedImage} />
+          ) : (
+            <div className="relative">
+              <img
+                src={URL.createObjectURL(selectedImage)}
+                className="max-w-full h-auto border rounded-lg"
+              />
+            </div>
+          )}
         </Card>
 
         <Card className="p-4">
@@ -226,10 +182,6 @@ const ImageEditor = ({ file, onReset }: ImageEditorProps) => {
             Download
           </Button>
         )}
-        <Button onClick={clearMask} variant="outline" className="w-40">
-          <RotateCcw className="mr-2 h-4 w-4" />
-          Clear Mask
-        </Button>
         <Button onClick={onReset} variant="outline" className="w-40">
           <RotateCcw className="mr-2 h-4 w-4" />
           Reset
