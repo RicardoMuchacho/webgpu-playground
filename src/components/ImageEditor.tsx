@@ -41,7 +41,7 @@ const ImageEditor = () => {
       } catch (err) {
         toast({
           title: "Error",
-          description: "Failed to load image",
+          description: "WebGPU is not supported in this browser.",
           variant: "destructive",
         });
       }
@@ -123,7 +123,7 @@ const ImageEditor = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mb-16 md:mb-0">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="text-center mb-4">
@@ -153,7 +153,7 @@ const ImageEditor = () => {
                 className="object-contain w-full h-full"
               />
             ) : (
-              <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+              <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
                 <p className="text-gray-500">Processed image will appear here</p>
               </div>
             )}
