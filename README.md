@@ -2,11 +2,15 @@
 
 ## Overview
 
-This project is designed to test the WebGPU API by implementing an efficient background removal tool in a React application. It leverages WebGPU's advanced GPU computing capabilities to perform real-time image processing, ensuring fast and smooth performance directly in the browser.
+This project is designed to test the WebGPU API by implementing a background removal tool. It uses a hugging face model to perform real-time image processing, ensuring fast and smooth performance directly in the browser.
+
+For more info on WebGPU API: <a target='_blanck' href='https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API'> Click here</a>
+
+![Demo](public/demo.gif)
 
 ## What technologies are used for this project?
 
-This project is built with .
+This project is built with
 
 - Vite
 - TypeScript
