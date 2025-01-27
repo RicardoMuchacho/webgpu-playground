@@ -1,20 +1,13 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ],
   "compilerOptions": {
     "lib": [
-      "dom",
-      "esnext"
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
     ],
     "types": [
-      "@webgpu/types"
+      "@webgpu/types",
+      "jest"
     ],
     "baseUrl": ".",
     "paths": {
@@ -22,11 +15,14 @@
         "./src/*"
       ]
     },
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
     "noImplicitAny": false,
     "noUnusedParameters": false,
     "skipLibCheck": true,
     "allowJs": true,
     "noUnusedLocals": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "outDir": "./dist"
   }
 }

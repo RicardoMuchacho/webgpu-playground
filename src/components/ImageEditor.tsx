@@ -7,7 +7,7 @@ import {
   env,
   AutoModel,
   AutoProcessor,
-  RawImage,
+  RawImage
 } from "@huggingface/transformers";
 import ImageSelector from "./ImageSelector";
 
@@ -37,7 +37,7 @@ const ImageEditor = () => {
         modelRef.current ??= await AutoModel.from_pretrained(model_id, {
           device: "webgpu",
         });
-        processorRef.current ??= await AutoProcessor.from_pretrained(model_id); env.backends.onnx.wasm.proxy = false;
+        processorRef.current ??= await AutoProcessor.from_pretrained(model_id, {}); env.backends.onnx.wasm.proxy = false;
       } catch (err) {
         toast({
           title: "Error",
